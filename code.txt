@@ -1,0 +1,906 @@
+### 1) loading all the data####################################
+library(rjson)
+library(jsonlite)
+library(RJSONIO)
+fnames <- c('business','checkin','review','tip','user')
+jfile <- paste0(getwd(),'/yelp_academic_dataset_',fnames,'.json')
+
+##############################  
+business_data <- stream_in(file(jfile[1]))
+#saving the data so tat it will load faster, next time.
+saveRDS(business_data,"business_data.RDS")
+
+#############################
+
+checkin_data <- stream_in(file(jfile[2]))
+#saving the data so tat it will load faster, next time.
+saveRDS(checkin_data,"checkin_data.RDS")
+
+#############################
+
+review_data <- stream_in(file(jfile[3]))
+#saving the data so tat it will load faster, next time.
+saveRDS(review_data,"review_data.RDS")
+
+#############################
+
+tips_data <- stream_in(file(jfile[4]))
+#saving the data so tat it will load faster, next time.
+saveRDS(tips_data,"tips_data.RDS")
+#############################
+
+### 2) exploring the data####################################
+str(business_data)
+str(checkin_data)
+str(review_data)
+str(tips_data)
+str(user_data)
+
+#looking at tip dataset
+head(tips_data)
+#since column = type is the same thru out, we will just remove it. 
+new_tip_data=tips_data[,-6]
+head(new_tip_data)
+names(new_tip_data)
+#saving the reduced new_tip_data
+saveRDS(new_tip_data,"new_tip_data.RDS")
+
+#removing the old tip data
+remove(tips_data)
+###################################################
+
+#looking at review dataset
+head(review_data)
+names(review_data)
+#removing the column= type since is no much use.
+new_review_data=review_data[,-7]
+names(new_review_data)
+#saving the reduced review_data
+saveRDS(new_review_data,"new_review_data.RDS")
+
+#removing the old review_data data
+remove(review_data)
+#################################
+#looking at user data
+head(user_data)
+names(user_data)
+#removing the column= type since is no much use.
+new_user_data=user_data[,-9]
+names(new_user_data)
+#saving the reduced review_data
+saveRDS(new_user_data,"new_user_data.RDS")
+
+#removing the old user_data data
+remove(user_data)
+#################################
+head(business_data)
+names(business_data)
+#removing the column= type since is no much use.
+new_business_data=business_data[,-15]
+names(new_business_data)
+#saving the reduced review_data
+saveRDS(new_business_data,"new_business_data.RDS")
+#removing the old business_data data
+remove(business_data)
+##################################
+head(checkin_data)
+names(checkin_data)
+#removing the column= type since is no much use.
+new_checkin_data=checkin_data[,-2]
+names(new_checkin_data)
+#saving the reduced review_data
+saveRDS(new_checkin_data,"new_checkin_data.RDS")
+#removing the old checkin_data data
+remove(checkin_data)
+#############################
+
+### 3) flattening all the data####################################
+
+require(jsonlite)
+require(dplyr)
+
+tip_flat <- flatten(new_tip_data)
+review_flat <- flatten(new_review_data)
+user_flat <- flatten(new_user_data)
+business_flat <- flatten(new_business_data)
+check_flat <- flatten(new_checkin_data)
+
+#############################
+
+### 4) Checking and changing data_type####################################
+
+### looking at which of the catergories in busines which are a list. 
+biz_col=dim(business_flat)[2]
+
+bix_x=c()
+for ( i in 1 : biz_col){
+  if(class(business_flat[,i])=="list"){
+    bix_x <- c(bix_x, i)
+  } 
+
+}
+## getting the column names which have list as their class
+names(business_flat[bix_x]) # there are a total 3 column which are list. we will make it tostring. 
+
+business_flat$cat <- sapply(business_flat$categories, toString)
+class(business_flat$cat)
+business_flat$num_of_cat=sapply(business_flat$categories, length) # to know the business is tagged for how many catergories
+class(business_flat$num_of_cat)
+table(business_flat$num_of_cat)
+business_flat$neigh <- sapply(business_flat$neighborhoods, toString)
+class(business_flat$neigh)
+business_flat$accept_cc <- sapply(business_flat$`attributes.Accepts Credit Cards`, toString)
+class(business_flat$accept_cc)
+table((business_flat$accept_cc))
+business_flat$accept_cc_new=ifelse(business_flat$accept_cc =="TRUE", TRUE, ifelse(business_flat$accept_cc =="FALSE",FALSE,NA))
+table(business_flat$accept_cc_new)
+#removing those original columns which class = list
+business_flat=business_flat[-bix_x]
+names(business_flat)
+business_flat=business_flat[-104]
+names(business_flat)
+#################################
+check_col=dim(check_flat)[2]
+
+check_x=c()
+for ( i in 1 : check_col){
+  if(class(check_flat[,i])=="list"){
+    check_x <- c(check_x, i)
+  } 
+  
+}
+## getting the column names which have list as their class
+names(check_flat[check_x])
+##########################################
+review_col=dim(review_flat)[2]
+
+review_x=c()
+for ( i in 1 : review_col){
+  if(class(review_flat[,i])=="list"){
+    review_x <- c(review_x, i)
+  } 
+  
+}
+## getting the column names which have list as their class
+names(review_flat[review_x])
+##########################################
+tip_col=dim(tip_flat)[2]
+
+tip_x=c()
+for ( i in 1 : tip_col){
+  if(class(tip_flat[,i])=="list"){
+    tip_x <- c(tip_x, i)
+  } 
+  
+}
+## getting the column names which have list as their class
+names(tip_flat[tip_x])
+##############################
+user_col=dim(user_flat)[2]
+
+use_x=c()
+for ( i in 1 : user_col){
+  if(class(user_flat[,i])=="list"){
+    use_x <- c(use_x, i)
+  } 
+  
+}
+## getting the column names which have list as their class
+names(user_flat[use_x]) # there 1 column which is in a list format. we will make it to string
+user_flat$frz <- sapply(user_flat$friends, toString)
+class(user_flat$frz)
+user_flat$num_of_frz=sapply(user_flat$friends, length) # to know the num of friends this user have
+class(user_flat$num_of_frz)
+table(user_flat$num_of_frz)
+
+user_flat$elite_1 <- sapply(user_flat$elite, toString)
+class(user_flat$elite_1)
+
+#removing those original columns which class = list
+user_flat=user_flat[-use_x]
+
+user_flat$year_join= as.numeric(substr(user_flat$yelping_since, 1, 4)) 
+class(user_flat$year_join)
+
+#getting the duration they are with yelp.
+user_flat$no.of.year = 2015 - user_flat$year_join
+table(user_flat$no.of.year)
+#####################################
+#creating a new column with unqiue user_id & business_id so that we can determine the person who wen to the same shop/service, how much they tisp
+# it will be created in tip_data, review_data
+
+tip_flat$u_tip_id= paste (tip_flat$user_id, tip_flat$business_id, sep = "_", collapse = NULL)
+review_flat$u_rev_id=paste (review_flat$user_id, review_flat$business_id, sep = "_", collapse = NULL)
+################################
+#removing extra things inside this rdata to reduce memory usage.
+remove(bix_x,
+       biz_col,
+       check_col,
+       check_x,
+       i,
+       review_col,
+       review_x,
+       tip_x,
+       tip_col,
+       use_x,
+       user_col)
+
+#############################
+
+### 6) extracting resutrant data and merging####################################
+#### testinng to grap only resturant
+rest_list=grepl ( "^(.*[Rr]estaurant.*)",  business_flat$cat)
+sum(rest_list) # checking number of business id with resturant as their tagging
+rest_data=business_flat[rest_list,]
+
+names(rest_data)
+
+
+rest_id=rest_data[,c(1:2)]
+names(rest_id)
+
+#inner join rest data with tip data together
+library(plyr)
+new_tip_data=join(rest_id, tip_flat, type = "inner")
+
+#inner join rest data with review data together
+library(plyr)
+new_review_data=join(rest_id, review_flat, type = "inner")
+
+saveRDS(new_tip_data,"new_tip_data.RDS")
+saveRDS(new_review_data,"new_review_data.RDS")
+saveRDS(rest_data,"rest_data.RDS")
+
+# new_tip_data <- readRDS("new_tip_data.RDS")
+# new_review_data <- readRDS("new_review_data.RDS")
+# rest_data <- readRDS("rest_data.RDS")
+
+remove(business_flat, check_flat, rest_id, review_flat, tip_flat, user_flat, rest_list)
+
+#############################
+
+### 8) getting the business id and text from tips and review####################################
+
+names(new_tip_data)
+new_tip_data2=new_tip_data[,c(1,4)]
+names(new_tip_data2)
+
+names(new_review_data)
+new_review_data2=new_review_data[,c(1,7)]
+names(new_review_data2)
+
+remove(new_tip_data, new_review_data)
+#############################
+
+### 9) sentimental analysis function####################################
+library (plyr)
+library (stringr)
+library(ggplot2)
+library(tm)
+
+hu.liu.pos = scan('positive-words.txt', what='character', comment.char=';')
+hu.liu.neg = scan('negative-words.txt', what='character', comment.char=';')
+
+#Add words to list
+pos.words = hu.liu.pos
+neg.words = hu.liu.neg
+
+# Sentiment Function 
+score.sentiment = function(sentences, pos.words, neg.words, .progress='none')
+{
+  require(tm)
+  require(plyr)
+  require(stringr)
+  scores=laply(sentences, function(sentence, pos.words, neg.words){
+    sentence = gsub('[[:punct:]]', '', sentence) # remove punctuation
+    sentence = gsub('[[:cntrl:]]', '', sentence)
+    sentence = gsub('\\d+', '', sentence) 
+    sentence = gsub("[[:digit:]]", "", sentence)# remove numbers
+    sentence = gsub("http\\w+", "", sentence)    # remove html links
+    # remove unnecessary spaces
+    sentence = gsub("[ \t]{2,}", "", sentence)
+    sentence = gsub("^\\s+|\\s+$", "", sentence)
+    sentence = tolower(sentence)
+    sentence = removeWords(sentence,c(stopwords("english")))
+    
+    word.list = str_split(sentence, '\\s+')
+    words = unlist(word.list)
+    
+    pos.matches = match(words, pos.words)
+    neg.matches = match(words, neg.words)
+    
+    pos.matches = !is.na(pos.matches)
+    neg.matches = !is.na(neg.matches)
+    score = sum(pos.matches) - sum(neg.matches)
+    return(score)
+    
+  }, pos.words, neg.words, .progress=.progress)
+  
+  scores.df = data.frame(score=scores, o.text=sentences)
+  return(scores.df)
+}
+
+# function to count words
+count.words <- function(x) { sapply(gregexpr("\\W+", x), length) + 1 }
+
+#############################
+
+### 10) sentimental analysis on tips text####################################
+
+#testing on tip data#
+tip.scores = score.sentiment(new_tip_data2$text, pos.words,neg.words, .progress='text')
+
+save.image(file = "tip_with_score.RData")
+
+tip.scores[,"Score_WordsNormalized"] = tip.scores[,"score"] / unlist(lapply( tip.scores[,"text"], count.words))
+
+#rounding function to nearest 0.5
+a = ceiling(a*2) / 2 
+
+tip.scores[,"Score_WordsNormalized"] = tip.scores[,"score"] / unlist(lapply( tip.scores[,"o.text"], count.words))
+
+## scale the score to be between 0 to 1
+tip.scores[,"Score_scaled1"] = scale(tip.scores[,"Score_WordsNormalized"])
+tip.scores[,"max_score"] = max(tip.scores[,"Score_WordsNormalized"])
+tip.scores[,"min_score"] = min(tip.scores[,"Score_WordsNormalized"])
+tip.scores[,"Score_scaled2"] = (tip.scores[,"Score_WordsNormalized"]-tip.scores[,"min_score"])/(tip.scores[,"max_score"] -tip.scores[,"min_score"])
+tip.scores[,"final_score_of5"] = tip.scores[,"Score_scaled2"]*5
+tip.scores[,"final_score_of5_2"] = ceiling(tip.scores[,"Score_scaled2"] *10) / 2 
+
+#############################
+
+### 10) sentimental analysis on review text####################################
+#testing on review data#
+review.scores = score.sentiment(new_review_data2$text, pos.words,neg.words, .progress='text')
+
+review.scores[,"Score_WordsNormalized"] = review.scores[,"score"] / unlist(lapply( review.scores[,"o.text"], count.words))
+
+## scale the score to be between 0 to 1
+review.scores[,"Score_scaled1"] = scale(review.scores[,"Score_WordsNormalized"])
+review.scores[,"max_score"] = max(review.scores[,"Score_WordsNormalized"])
+review.scores[,"min_score"] = min(review.scores[,"Score_WordsNormalized"])
+review.scores[,"Score_scaled2"] = (review.scores[,"Score_WordsNormalized"]-review.scores[,"min_score"])/(review.scores[,"max_score"] -review.scores[,"min_score"])
+review.scores[,"final_score_of5"] = review.scores[,"Score_scaled2"] *5
+review.scores[,"final_score_of5_2"] = ceiling(review.scores[,"Score_scaled2"] *10) / 2 
+
+#############################
+
+### 10) group the sentimental score by business id####################################
+## group the tips score by business id.
+library(dplyr)
+str(tip.scores)
+final_tips = data.frame(new_tip_data2, tip.scores)
+names(final_tips)
+final_tips2=final_tips[,c(1,10,11)]
+str(final_tips2)
+
+# tipscorebygp= final_tips2 %>%
+#   group_by(business_id) %>%
+#   summarise(avg_tipscore = mean(final_score_of5))
+
+library(plyr)
+tipscorebygp1=ddply(final_tips2, .(business_id), summarize,  avg.score1=mean(final_score_of5), avg.score2=mean(final_score_of5_2))
+head(tipscorebygp1)
+class(tipscorebygp1)
+tipscorebygp1$final_score5 =ceiling(tipscorebygp1[,"avg.score1"] *2) / 2
+tipscorebygp1$final_score5_2 =ceiling(tipscorebygp1[,"avg.score2"] *2) / 2
+head(tipscorebygp1)
+table(tipscorebygp1$final_score5)
+
+## group the review score by business id.
+final_reviews= data.frame(new_review_data2, review.scores)
+names(final_reviews)
+final_reviews2=final_reviews[,c(1,10,11)]
+str(final_reviews2)
+
+reviewscorebygp1=ddply(final_reviews2, .(business_id), summarize,  avg.score=mean(final_score_of5), avg.score2=mean(final_score_of5_2))
+head(reviewscorebygp1)
+class(reviewscorebygp1)
+reviewscorebygp1$final_score5 =ceiling(reviewscorebygp1[,"avg.score"] *2) / 2
+reviewscorebygp1$final_score5_2 =ceiling(reviewscorebygp1[,"avg.score2"] *2) / 2
+head(reviewscorebygp1)
+table(reviewscorebygp1$final_score5 )
+table(reviewscorebygp1$final_score5_2)
+
+remove("count.words", "final_reviews", "final_reviews2", "final_tips", "final_tips2", "hu.liu.neg", "hu.liu.pos" , "identifyPch","neg.words",
+       "new_review_data2","new_tip_data2", "pct_normalization", "pos.words", "review.scores", "score.sentiment", "tip.scores"  )
+
+table(tipscorebygp1$final_score5_2)
+
+#############################
+
+### 11) inner_join back the sentimental score to resturant data####################################
+library(plyr)
+end_tip_data=join(rest_data, tipscorebygp1, type = "inner")
+
+#inner join review score to the business
+end_review_data=join(rest_data, reviewscorebygp1, type = "inner")
+
+remove("rest_data", "reviewscorebygp1", "tipscorebygp1" )
+#############################
+
+### 12) making the data ready for machine learning####################################
+# ploting how the reviews= stars look like based on orginal score for review
+# review.star = ggplot(end_review_data, aes(factor(stars)))
+# review.star + geom_bar()
+review.star = qplot(factor(stars), data=end_review_data, geom="bar", fill=factor(stars))
+review.star+ ggtitle("barplot of orginal star reviews of the resuturant data(review)")
+
+# plotting based on review sentimental score
+review.sen_score= qplot(factor(final_score5_2), data=end_review_data, geom="bar", fill=factor(final_score5_2))
+review.sen_score+ ggtitle("barplot of sentimental score by reviews of the resuturant data")
+
+# ploting how the reviews= stars look like based on orginal score for review
+tip.star = qplot(factor(stars), data=end_tip_data, geom="bar", fill=factor(stars))
+tip.star+ ggtitle("barplot of orginal star reviews of the resuturant data (tip)")
+
+# plotting based on review sentimental score
+tip.sen_score= qplot(factor(final_score5_2), data=end_tip_data, geom="bar", fill=factor(final_score5_2))
+tip.sen_score+ ggtitle("barplot of sentimental score by tip of the resuturant data")
+
+
+dim(end_tip_data)
+names(end_tip_data)
+str(end_tip_data)
+#reduce the tip data
+end_tip_data2= end_tip_data[,-c(110:111,113)]
+names(end_tip_data2)
+str(end_review_2)
+head(end_tip_data2[,c(105:109)])
+str(end_tip_data2$cat)
+end_tip_data2=end_tip_data2[,-105] # remove catergories (string)
+end_tip_data2=end_tip_data2[,-4] # remove catergories (list)
+str(end_tip_data2$neigh)
+str(end_tip_data2$neighborhoods)
+end_tip_data2=end_tip_data2[,-7] # remove neighborhoods (list)
+str(end_tip_data2$accept_cc)
+str(end_tip_data2$accept_cc_new)
+end_tip_data2=end_tip_data2[,-105] # remove accept credit card (char)
+end_tip_data2=end_tip_data2[,-27] # remove accept credit card (list)
+
+dim(end_tip_data2)
+names(end_tip_data2)
+str(end_tip_data2)
+#making the data for tip based on the original score by yelp user.
+f_tip_data1 = end_tip_data2[,-105]
+dim(f_tip_data1)
+table(f_tip_data1$stars)
+f_tip_data1$target = ifelse(f_tip_data1$stars >= 3,1,0) #any cases more than 
+table(f_tip_data1$target)
+names(f_tip_data1)
+
+
+#making the data for tip based on the tip_sentimental score.
+f_tip_data2 = end_tip_data2[,-9]
+dim(f_tip_data2)
+f_tip_data2$target = ifelse(f_tip_data2$final_score5_2 >= 3,1,0) #any cases more than 
+table(f_tip_data2$target)
+
+saveRDS(f_tip_data1,"f_tip_data1.RDS")
+saveRDS(f_tip_data2,"f_tip_data2.RDS")
+
+dim(end_review_data)
+names(end_review_data)
+str(end_review_data)
+#reduce the review data
+end_review_data2= end_review_data[,-c(110:112)]
+names(end_review_data2)
+str(end_review_2)
+head(end_review_data2[,c(105:109)])
+str(end_review_data2$cat)
+end_review_data2=end_review_data2[,-105] # remove catergories (string)
+end_review_data2=end_review_data2[,-4] # remove catergories (list)
+str(end_review_data2$neigh)
+str(end_review_data2$neighborhoods)
+end_review_data2=end_review_data2[,-7] # remove neighborhoods (list)
+str(end_review_data2$accept_cc)
+str(end_review_data2$accept_cc_new)
+end_review_data2=end_review_data2[,-105] # remove accept credit card (char)
+end_review_data2=end_review_data2[,-27] # remove accept credit card (list)
+
+names(end_review_data2)
+
+#making the data for review based on the original score by yelp user.
+f_review_data1 = end_review_data2[,-105]
+dim(f_review_data1)
+table(f_review_data1$stars)
+f_review_data1$target = ifelse(f_review_data1$stars >= 3,1,0) #any cases more than 
+table(f_review_data1$target)
+names(f_review_data1)
+
+#making the data for review based on the review_sentimental score.
+f_review_data2 = end_review_data2[,-9]
+dim(f_review_data2)
+table(f_review_data2$final_score5_2)
+f_review_data2$target = ifelse(f_review_data2$final_score5_2 >= 3,1,0) #any cases more than 
+table(f_review_data2$target)
+names(f_review_data2)
+
+saveRDS(f_review_data1,"f_review_data1.RDS")
+saveRDS(f_review_data2,"f_review_data2.RDS")
+
+remove(end_review_data,end_review_data2, end_tip_data, end_tip_data2)
+
+remove("rest_data", "reviewscorebygp1", "tipscorebygp1" )
+#############################
+
+### 13) random forest on tip data(yelp star)####################################
+#runing on tip data 1 into 70/30
+set.seed(1234)
+inTrain <- createDataPartition(y=f_tip_data1$target, p=0.7, list=F)
+train_1 <- f_tip_data1[inTrain, ]
+train_1_test <- f_tip_data1[-inTrain, ]
+c(dim(train_1), dim(train_1_test))
+
+#reducing near zero variance variable
+nzvar <- nearZeroVar(train_1)
+train_1 <- train_1[, -nzvar]
+train_1_test <- train_1_test[, -nzvar]
+c(dim(train_1), dim(train_1_test))
+
+#removing variable with alot of nas
+almost_NA <- sapply(train_1, function(x) mean(is.na(x))) > 0.95
+train_1 <- train_1[, almost_NA==F]
+train_1_test <- train_1_test[, almost_NA==F]
+c(dim(train_1), dim(train_1_test))
+
+#removing those column which have no use
+train_1 <- train_1[, -c(1:2,4,6,9)]
+train_1_test <- train_1_test[, -c(1:2,4,6,9)]
+c(dim(train_1), dim(train_1_test))
+
+str(train_1)
+table(train_1$hours.Tuesday.close)
+
+str(train_1)
+
+#converting all the opeing hours in day to false and true
+for( i in 6: 19){
+  train_1[,i] = ifelse(is.na(train_1[,i]),FALSE,TRUE)
+  train_1_test[,i] = ifelse(is.na(train_1_test[,i]),FALSE,TRUE)
+}
+
+str(train_1)
+str(train_1_test)
+names(train_1)
+
+#for price rane
+train_1[,23] = as.factor(ifelse(is.na(train_1[,23]),"NA",train_1[,23]))
+train_1_test[,23] = as.factor(ifelse(is.na(train_1_test[,23]),"NA",train_1_test[,23]))
+
+for( i in 25: 26){
+  train_1[,i] = as.factor(ifelse(is.na(train_1[,i]),"NA",train_1[,i]))
+  train_1_test[,i] = as.factor(ifelse(is.na(train_1_test[,i]),"NA",train_1_test[,i]))
+}
+
+str(train_1)
+str(train_1_test)
+
+
+
+train_1[,31]=as.factor(ifelse(is.na(train_1[,31]),"NA",train_1[,31]))
+train_1[,35]=as.factor(ifelse(is.na(train_1[,35]),"NA",train_1[,35]))
+train_1[,39]=as.factor(ifelse(is.na(train_1[,39]),"NA",train_1[,39]))
+
+train_1_test[,31]=as.factor(ifelse(is.na(train_1_test[,31]),"NA",train_1_test[,31]))
+train_1_test[,35]=as.factor(ifelse(is.na(train_1_test[,35]),"NA",train_1_test[,35]))
+train_1_test[,39]=as.factor(ifelse(is.na(train_1_test[,39]),"NA",train_1_test[,39]))
+
+
+str(train_1)
+names(train_1)
+class(train_1[,1])
+
+train_1=train_1[,-4]
+train_1_test=train_1_test[,-4]
+names(train_1)
+names(train_1_test)
+
+for ( i in 19: 52){
+  train_1[,i] = ifelse(is.na(train_1[,i]) , FALSE , train_1[,i] )
+  train_1_test[,i] = ifelse(is.na(train_1_test[,i]) , FALSE , train_1_test[,i] )
+}
+
+
+## looking for number of na in each row
+c_na= c()
+for ( i in 1 : dim(train_1)[2]){
+  n = sum(is.na(train_1[,i]))
+  c_na=c(c_na,n)
+}
+
+c_na1= c()
+for ( i in 1 : dim(train_1_test)[2]){
+  n = sum(is.na(train_1_test[,i]))
+  c_na1=c(c_na1,n)
+}
+
+# train_1[,54]=as.factor(train_1[,54])
+# train_1_test[,54]=as.factor(train_1_test[,54])
+train_1[,54]=factor(train_1[,54],levels = c("1", "0"))
+train_1_test[,54]=factor(train_1_test[,54],levels = c("1", "0"))
+class(train_1[,54])
+str(train_1[,54])
+class(train_1_test[,54])
+str(train_1_test[,54])
+#We will train a model with randomforest with 5-fold time cross validation. This will instruct to use the partition training data to use 5-fold CV to select optimal tuning variables. model=fitrf
+fitControl <- trainControl(method="cv", number=5, verboseIter=F)
+fitrF <- train(target ~ ., data=train_1, method="rf", trControl=fitControl)
+
+fitrF$finalModel
+
+#################
+pred_test <- predict(fitrF, newdata=train_1_test)
+confusionMatrix(train_1_test$target, pred_test)
+
+fitrF_imp=varImp(fitrF, scale = FALSE)
+
+#plot variable importance
+plot(fitrF_imp, top = 20)
+#############################
+
+### 14) random forest on tip data(sentimental score)####################################
+#runing on tip data 2 into 70/30
+set.seed(1234)
+inTrain <- createDataPartition(y=f_tip_data2$target, p=0.7, list=F)
+train_2 <- f_tip_data2[inTrain, ]
+train_2_test <- f_tip_data2[-inTrain, ]
+c(dim(train_2), dim(train_2))
+
+#reducing near zero variance variable
+nzvar <- nearZeroVar(train_2)
+train_2 <- train_2[, -nzvar]
+train_2_test <- train_2_test[, -nzvar]
+c(dim(train_2), dim(train_2_test))
+
+#removing variable with alot of nas
+almost_NA <- sapply(train_2, function(x) mean(is.na(x))) > 0.95
+train_2 <- train_2[, almost_NA==F]
+train_2_test <- train_2_test[, almost_NA==F]
+c(dim(train_2), dim(train_2_test))
+
+#removing those column which have no use
+train_2 <- train_2[, -c(1:2,4,6,8,59)]
+train_2_test <- train_2_test[, -c(1:2,4,6,8,59)]
+c(dim(train_2), dim(train_2_test))
+
+#converting all the opeing hours in day to false and true
+for( i in 5: 18){
+  train_2[,i] = ifelse(is.na(train_2[,i]),FALSE,TRUE)
+  train_2_test[,i] = ifelse(is.na(train_2_test[,i]),FALSE,TRUE)
+}
+
+for( i in 24: 25){
+  train_2[,i] = as.factor(ifelse(is.na(train_2[,i]),"NA",train_2[,i]))
+  train_2_test[,i] = as.factor(ifelse(is.na(train_2_test[,i]),"NA",train_2_test[,i]))
+}
+
+train_2[,22] = as.factor(ifelse(is.na(train_2[,22]),"NA",train_2[,22]))
+train_2_test[,22] = as.factor(ifelse(is.na(train_2_test[,22]),"NA",train_2_test[,22]))
+
+
+train_2[,30]=as.factor(ifelse(is.na(train_2[,30]),"NA",train_2[,30]))
+train_2[,34]=as.factor(ifelse(is.na(train_2[,34]),"NA",train_2[,34]))
+train_2[,38]=as.factor(ifelse(is.na(train_2[,38]),"NA",train_2[,38]))
+
+train_2_test[,30]=as.factor(ifelse(is.na(train_2_test[,30]),"NA",train_2_test[,30]))
+train_2_test[,34]=as.factor(ifelse(is.na(train_2_test[,34]),"NA",train_2_test[,34]))
+train_2_test[,38]=as.factor(ifelse(is.na(train_2_test[,38]),"NA",train_2_test[,38]))
+
+
+for ( i in 19: 52){
+  train_2[,i] = ifelse(is.na(train_2[,i]) , FALSE , train_2[,i] )
+  train_2_test[,i] = ifelse(is.na(train_2_test[,i]) , FALSE , train_2_test[,i] )
+}
+
+## looking for number of na in each row
+c_na= c()
+for ( i in 1 : dim(train_2)[2]){
+  n = sum(is.na(train_2[,i]))
+  c_na=c(c_na,n)
+}
+
+c_na1= c()
+for ( i in 1 : dim(train_2_test)[2]){
+  n = sum(is.na(train_2_test[,i]))
+  c_na1=c(c_na1,n)
+}
+
+train_2[,54]=factor(train_2[,54],levels = c("1", "0"))
+train_2_test[,54]=factor(train_2_test[,54],levels = c("1", "0"))
+class(train_2[,54])
+str(train_2[,54])
+class(train_2_test[,54])
+str(train_2_test[,54])
+
+
+#We will train a model with randomforest with 5-fold time cross validation. This will instruct to use the partition training data to use 5-fold CV to select optimal tuning variables. model=fitrf
+fitControl <- trainControl(method="cv", number=5, verboseIter=F)
+fitrF2 <- train(target ~ ., data=train_2, method="rf", trControl=fitControl)
+
+fitrF2$finalModel
+
+#################
+pred_test2 <- predict(fitrF2, newdata=train_2_test)
+confusionMatrix(train_2_test$target, pred_test2)
+
+fitrF_imp2=varImp(fitrF2, scale = FALSE)
+
+#############################
+
+### 15) random forest on review data(yelp star)####################################
+#runing on review data 1 into 70/30
+set.seed(1234)
+inTrain <- createDataPartition(y=f_review_data1$target, p=0.7, list=F)
+train_3 <- f_review_data1[inTrain, ]
+train_3_test <- f_review_data1[-inTrain, ]
+c(dim(train_3), dim(train_3))
+
+#reducing near zero variance variable
+nzvar <- nearZeroVar(train_3)
+train_3 <- train_3[, -nzvar]
+train_3_test <- train_3_test[, -nzvar]
+c(dim(train_3), dim(train_3_test))
+
+#removing variable with alot of nas
+almost_NA <- sapply(train_3, function(x) mean(is.na(x))) > 0.95
+train_3 <- train_3[, almost_NA==F]
+train_3_test <- train_3_test[, almost_NA==F]
+c(dim(train_3), dim(train_3_test))
+
+#removing those column which have no use
+train_3 <- train_3[, -c(1:2,4,6,9)]
+train_3_test <- train_3_test[, -c(1:2,4,6,9)]
+c(dim(train_3), dim(train_3_test))
+
+#converting all the opeing hours in day to false and true
+for( i in 6: 19){
+  train_3[,i] = ifelse(is.na(train_3[,i]),FALSE,TRUE)
+  train_3_test[,i] = ifelse(is.na(train_3_test[,i]),FALSE,TRUE)
+}
+
+train_3[,23] = as.factor(ifelse(is.na(train_3[,23]),"NA",train_3[,23]))
+train_3_test[,23] = as.factor(ifelse(is.na(train_3_test[,23]),"NA",train_3_test[,23]))
+
+for( i in 25: 26){
+  train_3[,i] = as.factor(ifelse(is.na(train_3[,i]),"NA",train_3[,i]))
+  train_3_test[,i] = as.factor(ifelse(is.na(train_3_test[,i]),"NA",train_3_test[,i]))
+}
+
+train_3[,31]=as.factor(ifelse(is.na(train_3[,31]),"NA",train_3[,31]))
+train_3[,35]=as.factor(ifelse(is.na(train_3[,35]),"NA",train_3[,35]))
+train_3[,39]=as.factor(ifelse(is.na(train_3[,39]),"NA",train_3[,39]))
+
+train_3_test[,31]=as.factor(ifelse(is.na(train_3_test[,31]),"NA",train_3_test[,31]))
+train_3_test[,35]=as.factor(ifelse(is.na(train_3_test[,35]),"NA",train_3_test[,35]))
+train_3_test[,39]=as.factor(ifelse(is.na(train_3_test[,39]),"NA",train_3_test[,39]))
+
+for ( i in 20: 54){
+  train_3[,i] = ifelse(is.na(train_3[,i]) , FALSE , train_3[,i] )
+  train_3_test[,i] = ifelse(is.na(train_3_test[,i]) , FALSE , train_3_test[,i] )
+}
+
+
+## looking for number of na in each row
+c_na= c()
+for ( i in 1 : dim(train_3)[2]){
+  n = sum(is.na(train_3[,i]))
+  c_na=c(c_na,n)
+}
+
+c_na1= c()
+for ( i in 1 : dim(train_3_test)[2]){
+  n = sum(is.na(train_3_test[,i]))
+  c_na1=c(c_na1,n)
+}
+
+train_3[,56]=factor(train_3[,56],levels = c("1", "0"))
+train_3_test[,56]=factor(train_3_test[,56],levels = c("1", "0"))
+class(train_3[,56])
+str(train_3[,56])
+class(train_3_test[,56])
+str(train_3_test[,56])
+
+#We will train a model with randomforest with 5-fold time cross validation. This will instruct to use the partition training data to use 5-fold CV to select optimal tuning variables. model=fitrf
+fitControl <- trainControl(method="cv", number=5, verboseIter=F)
+fitrF3 <- train(target ~ ., data=train_3, method="rf", trControl=fitControl)
+
+fitrF3$finalModel
+
+#################
+pred_test3 <- predict(fitrF3, newdata=train_3_test)
+confusionMatrix(train_3_test$target, pred_test3)
+
+fitrF_imp3=varImp(fitrF3, scale = FALSE)
+
+#plot variable importance
+plot(fitrF_imp3, top = 20)
+
+#############################
+
+### 16) random forest on review data(sentimental star)####################################
+#runing on review data 2 into 70/30
+set.seed(1234)
+inTrain <- createDataPartition(y=f_review_data2$target, p=0.7, list=F)
+train_4 <- f_review_data2[inTrain, ]
+train_4_test <- f_review_data2[-inTrain, ]
+c(dim(train_4), dim(train_4))
+
+#reducing near zero variance variable
+nzvar <- nearZeroVar(train_4[,1:104])
+train_4 <- train_4[, -nzvar]
+train_4_test <- train_4_test[, -nzvar]
+c(dim(train_4), dim(train_4_test))
+
+
+#removing variable with alot of nas
+almost_NA <- sapply(train_4, function(x) mean(is.na(x))) > 0.95
+train_4 <- train_4[, almost_NA==F]
+train_4_test <- train_4_test[, almost_NA==F]
+c(dim(train_4), dim(train_4_test))
+
+#removing those column which have no use
+train_4 <- train_4[, -c(1:2,4,6,8)]
+train_4_test <- train_4_test[, -c(1:2,4,6,8)]
+c(dim(train_4), dim(train_4_test))
+
+#converting all the opeing hours in day to false and true
+for( i in 5: 18){
+  train_4[,i] = ifelse(is.na(train_4[,i]),FALSE,TRUE)
+  train_4_test[,i] = ifelse(is.na(train_4_test[,i]),FALSE,TRUE)
+}
+
+train_4[,22] = as.factor(ifelse(is.na(train_4[,22]),"NA",train_4[,22]))
+train_4_test[,22] = as.factor(ifelse(is.na(train_4_test[,22]),"NA",train_4_test[,22]))
+
+for( i in 24: 25){
+  train_4[,i] = as.factor(ifelse(is.na(train_4[,i]),"NA",train_4[,i]))
+  train_4_test[,i] = as.factor(ifelse(is.na(train_4_test[,i]),"NA",train_4_test[,i]))
+}
+
+train_4[,30]=as.factor(ifelse(is.na(train_4[,30]),"NA",train_4[,30]))
+train_4[,34]=as.factor(ifelse(is.na(train_4[,34]),"NA",train_4[,34]))
+train_4[,38]=as.factor(ifelse(is.na(train_4[,38]),"NA",train_4[,38]))
+
+train_4_test[,30]=as.factor(ifelse(is.na(train_4_test[,30]),"NA",train_4_test[,30]))
+train_4_test[,34]=as.factor(ifelse(is.na(train_4_test[,34]),"NA",train_4_test[,34]))
+train_4_test[,38]=as.factor(ifelse(is.na(train_4_test[,38]),"NA",train_4_test[,38]))
+
+for ( i in 19: 53){
+  train_4[,i] = ifelse(is.na(train_4[,i]) , FALSE , train_4[,i] )
+  train_4_test[,i] = ifelse(is.na(train_4_test[,i]) , FALSE , train_4_test[,i] )
+}
+
+
+
+## looking for number of na in each row
+c_na= c()
+for ( i in 1 : dim(train_4)[2]){
+  n = sum(is.na(train_4[,i]))
+  c_na=c(c_na,n)
+}
+
+c_na1= c()
+for ( i in 1 : dim(train_4_test)[2]){
+  n = sum(is.na(train_4_test[,i]))
+  c_na1=c(c_na1,n)
+}
+
+train_4[,55]=factor(train_4[,55],levels = c("1", "0"))
+train_4_test[,55]=factor(train_4_test[,55],levels = c("1", "0"))
+class(train_4[,55])
+str(train_4[,55])
+class(train_4_test[,55])
+str(train_4_test[,55])
+
+#We will train a model with randomforest with 5-fold time cross validation. This will instruct to use the partition training data to use 5-fold CV to select optimal tuning variables. model=fitrf
+fitControl <- trainControl(method="cv", number=5, verboseIter=F)
+fitrF4 <- train(target ~ ., data=train_4, method="rf", trControl=fitControl)
+
+fitrF4$finalModel
+
+#################
+pred_test4 <- predict(fitrF4, newdata=train_4_test)
+confusionMatrix(train_4_test$target, pred_test4)
+
+fitrF_imp4=varImp(fitrF4, scale = FALSE)
